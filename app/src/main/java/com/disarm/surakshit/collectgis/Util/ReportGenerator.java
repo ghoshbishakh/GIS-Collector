@@ -18,20 +18,15 @@ import java.util.Date;
  */
 
 public class ReportGenerator {
-    public static void generateReport(double meanHD, double stdvHD){
+    public static void generateReport(String log, String fileName) {
         File reportFolder = Environment.getExternalStoragePublicDirectory(Constants.REPORT_DIRECTORY);
-        if(!reportFolder.exists()){
+        if (!reportFolder.exists()) {
             reportFolder.mkdir();
         }
-        Date date = new Date();
-        File reportFile = Environment.getExternalStoragePublicDirectory(Constants.REPORT_DIRECTORY+"report_"+date.toString()+".txt");
-
-        String log = "";
-        log += "----------------------\n";
-        log+= meanHD + "\n";
-        log+= stdvHD + "\n";
+        File reportFile = Environment.getExternalStoragePublicDirectory(Constants.REPORT_DIRECTORY + fileName);
+        log += "\n";
         try {
-            FileOutputStream fos = new FileOutputStream(reportFile);
+            FileOutputStream fos = new FileOutputStream(reportFile, true);
             fos.write(log.getBytes());
         } catch (FileNotFoundException e) {
             e.printStackTrace();

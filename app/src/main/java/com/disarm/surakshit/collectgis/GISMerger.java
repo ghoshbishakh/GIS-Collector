@@ -29,18 +29,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by bishakh on 6/28/18.
+ * Created by aman on 6/28/18.
  */
 
 public class GISMerger {
 
-    private static MapView mapView;
+    //    private static MapView mapView;
     private static List<KmlObject> kmlObjects;
     private static Map<String, List<KmlObject>> sameTileObjects;
 
-    static void mergeGIS(Context context) {
-        mapView = new MapView(context);
-        Storage storage = new Storage(context);
+    //return number of not merged files
+    public static int mergeGIS(MapView mapView, MergeDecisionPolicy mergeDecisionPolicy) {
+        int totalNotMergedFiles = 0;
+        int totalMergedFiles = 0;
+//        mapView = new MapView(context);
+        Storage storage = new Storage(mapView.getContext());
         kmlObjects = new ArrayList<>();
         sameTileObjects = new HashMap<>();
         File file = Environment.getExternalStoragePublicDirectory(Constants.CMS_TAGGED_KML);
@@ -104,11 +107,8 @@ public class GISMerger {
                 for (int i = 0; i < bucket.size(); i++) {
                     double tfidfScore = new JaroWinklerTFIDF().score(X.getMessage(), bucket.get(i).getMessage());
                     double housDroff = housedorffDistance(X, bucket.get(i));
-                    MergeDecisionPolicy mergeDecisionPolicy = new MergeDecisionPolicy(MergeDecisionPolicy.DISTANCE_AND_TFIDF_THRESHOLD_POLICY);
                     boolean toMerge = mergeDecisionPolicy.mergeDecider(tfidfScore, housDroff);
                     if (toMerge) {
-                        Log.d("Merging", X.getMessage() + " vs " + bucket.get(i).getMessage());
-                        Log.d("Tag Comparing", X.getTag() + " vs " + bucket.get(i).getTag());
                         MergePolicy mergePolicy = new MergePolicy(MergePolicy.CONVEX_HULL);
                         List<LatLng> mergedPoints = mergePolicy.mergeKmlObjects(X, bucket.get(i));
                         String mergedMessage = X.getMessage() + " , " + bucket.get(i).getMessage();
@@ -120,9 +120,9 @@ public class GISMerger {
                                 , mergedSource
                                 , tileName
                                 , null);
-                        if (X.getTag() == null) {
+                        if (X.getTag() == null)
                             mergeKmlObject.setTag(bucket.get(i).getTag());
-                        } else
+                        else
                             mergeKmlObject.setTag(X.getTag() + "$" + bucket.get(i).getTag());
                         X = mergeKmlObject;
                         merged = true;
@@ -130,24 +130,31 @@ public class GISMerger {
                         newBucket.add(bucket.get(i));
                     }
                 }
-                if (merged)
+                if (merged) {
                     mergedBucket.add(X);
+                    String[] message = X.getMessage().split(",");
+                    Log.d("Message:" + message.length, X.getMessage());
+                    totalMergedFiles += message.length;
+                }
                 ListCopy(bucket, newBucket);
             }
             saveKmlObjectInFile(mergedBucket);
         }
+        Log.d("Message:", "------------------------------------------");
         //recording time after merging
         long tEnd = System.currentTimeMillis();
         long tDelta = tEnd - tStart;
         double elapsedSeconds = tDelta / 1000.0;
+        totalNotMergedFiles = file.listFiles().length - totalMergedFiles;
         Log.d("Time", "T in seconds:" + elapsedSeconds);
+        Log.d("Total Merged Files", "" + totalMergedFiles);
+        Log.d("Total Not Merged Files", "" + totalNotMergedFiles);
+        return totalNotMergedFiles;
     }
 
     private static void ListCopy(List<KmlObject> dest, List<KmlObject> source) {
         dest.clear();
-        for (KmlObject obj : source) {
-            dest.add(obj);
-        }
+        dest.addAll(source);
     }
 
     private static void saveKmlObjectInFile(List<KmlObject> newBucket) {
